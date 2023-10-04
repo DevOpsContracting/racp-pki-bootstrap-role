@@ -1,0 +1,4 @@
+---
+pki_bs_install_target: "{{ lookup('env', 'PWD') }}/.bootstrap-pki"
+pki_bs_rekey_required: "{{ lookup('env', 'RII_ANSIBLE_VAULT_PKI_BOOTSTRAP') | default(false, true) }}"
+pki_bs_cluster_name: "vault"

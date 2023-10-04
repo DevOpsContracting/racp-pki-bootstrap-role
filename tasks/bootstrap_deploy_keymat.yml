@@ -1,0 +1,48 @@
+- name: deploy bootstrapped key material
+  become: "{{ (ansible_os_family == 'RedHat' and ansible_distribution_major_version | int >= 7) | bool }}"
+  tags:
+    - pki-bootstrap
+    - molecule-idempotence-notest
+  block:
+    - name: ensure pki boostrap dir, non-localhost
+      file:
+        path: "{{ target.directory }}"
+        owner: "{{ target.owner | default(omit) }}"
+        group: "{{ target.group | default(omit) }}"
+        mode: 0700
+        state: directory
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version | int >= 7
+
+    - name: deploy bootstrap ca to ca-trust store, on enterprise linux distros
+      copy:
+        src: "{{ pki_bs_ca_cert }}"
+        dest: "/etc/pki/ca-trust/source/anchors/vault_ca_bundle.pem"
+        owner: "root"
+        group: "root"
+        mode: 0644
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version | int >= 7
+      notify: update-ca-trust
+
+    - name: deploy bootstrap ca
+      copy:
+        src: "{{ pki_bs_ca_cert }}"
+        dest: "{{ target.directory }}/vault_ca_bundle.pem"
+        owner: "{{ target.owner | default(developer) | default('ansible') }}"
+        group: "{{ target.group | default(omit) }}"
+        mode: 0644
+
+    - name: deploy bootstrap cert
+      copy:
+        src: "{{ pki_bs_install_target }}/{{ pki_bs_cert_name }}.pem"
+        dest: "{{ target.directory }}/{{ pki_bs_cert_name }}.pem"
+        owner: "{{ target.owner | default(developer) | default('ansible') }}"
+        group: "{{ target.group | default(omit) }}"
+        mode: 0644
+
+    - name: deploy bootstrap key
+      copy:
+        src: "{{ pki_bs_install_target }}/{{ pki_bs_cert_name }}.key"
+        dest: "{{ target.directory }}/{{ pki_bs_cert_name }}.key"
+        owner: "{{ target.owner | default(developer) | default('ansible') }}"
+        group: "{{ target.group | default(omit) }}"
+        mode: 0600

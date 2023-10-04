@@ -1,0 +1,8 @@
+---
+- name: 'Molecule prepare tasks'
+  hosts: 'all'
+  tasks:
+    - name: 'Install openssl'
+      package:
+        name: 'openssl'
+        state: present

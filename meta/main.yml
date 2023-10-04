@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  author: RII
+  license: Undefined
+  role_name: rii.pki-bootstrap
+  description: RII role to handle pki bootstrap of consul and vault, before pki is available.
+  min_ansible_version: 2.7
+  platforms:
+    - name: EL
+      versions:
+        - 7
+
+dependencies: []

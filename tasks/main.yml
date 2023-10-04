@@ -1,0 +1,4 @@
+---
+# tasks file for ansible-role-rii-pki-bootstrap
+- name: import bootstrap pki
+  import_tasks: bootstrap_pki.yml

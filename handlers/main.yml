@@ -1,0 +1,5 @@
+---
+# handlers file for ansible-role-rii-pki-bootstrap
+- name: update-ca-trust
+  command: /bin/update-ca-trust extract
+  become: yes

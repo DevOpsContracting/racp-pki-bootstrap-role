@@ -1,0 +1,5 @@
+---
+pki_bs_install_target: '/bootstrap-pki'
+pki_bs_rekey_required: true
+resolv_domain: "{{ ansible_domain }}"
+rii_vault_cert_path: '/certs'

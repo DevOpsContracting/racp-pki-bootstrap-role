@@ -1,0 +1,10 @@
+---
+# vars file for ansible-role-rii-pki-bootstrap
+management_node: "{{ not (vagrant_mode | default(false) | bool) }}"
+pki_bs_srl: "{{ lookup('env', 'PWD') }}/.srl"
+pki_bs_ca_cert: "{{ pki_bs_install_target }}/bootstrap-ca.pem"
+pki_bs_ca_key: "{{ pki_bs_install_target }}/bootstrap-ca.key"
+pki_bs_ca_config: "{{ role_path }}/files/openssl-bootstrap-ca.cnf"
+pki_bs_config: "{{ role_path }}/files/openssl-bootstrap.cnf"
+pki_bs_cert_name: "{{ (inventory_hostname == 'localhost' or inventory_hostname in groups['mgmt'])
+                    | ternary('bootstrap-ansible.' + resolv_domain, ansible_nodename) }}"

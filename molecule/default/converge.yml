@@ -1,0 +1,13 @@
+---
+- name: 'Molecule converge tasks'
+  hosts: 'all'
+  pre_tasks:
+    - name: 'Ensure the needed inventory groups exist'
+      add_host:
+        hostname: "{{ inventory_hostname }}"
+        groups:
+          - 'mgmt'
+          - 'hashi_vault'
+      changed_when: false
+  roles:
+    - {role: '{{ lookup("env", "MOLECULE_PROJECT_DIRECTORY") | basename }}'}

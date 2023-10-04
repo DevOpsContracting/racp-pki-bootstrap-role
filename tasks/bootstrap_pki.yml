@@ -1,0 +1,111 @@
+- name: create pki boostrap ca
+  delegate_to: 127.0.0.1
+  become: "{{ management_node }}"
+  run_once: yes
+  when: pki_bs_rekey_required | bool
+  tags:
+    - pki-bootstrap
+    - molecule-idempotence-notest
+  block:
+    - name: Create bootstrap directory
+      file:
+        path: "{{ pki_bs_install_target }}"
+        state: directory
+      tags:
+        - skip_ansible_lint
+      # Bypassing lint due ot rule 208, we do not want a deliberate permission at this time and rely on the
+      # system umask, due to the differential between Centos and MacOS behavior in dev and prod.
+      # May refactor later as time allows.
+
+    - name: Create the CA key file
+      command: "openssl genrsa -out {{ pki_bs_ca_key }} 4096"
+      args:
+        creates: "{{ pki_bs_ca_key }}"
+
+    - name: Create CA Certificate
+      command: "openssl req -new -x509 -days 14 -key {{ pki_bs_ca_key }} -out
+               {{ pki_bs_ca_cert }} -config {{ pki_bs_ca_config }} -subj
+               '/C=US/ST=Virginia/L=Alexandria/O=RII/OU=Automation/CN={{ pki_bs_ca_cert_name | default('vault') }}'"
+      args:
+        creates: "{{ pki_bs_ca_cert }}"
+
+- name: create pki boostrap certificates
+  delegate_to: 127.0.0.1
+  become: "{{ management_node }}"
+  when: pki_bs_rekey_required | bool
+  tags:
+    - pki-bootstrap
+    - molecule-idempotence-notest
+  block:
+    - name: Create the bootstrap keys
+      command: "openssl genrsa -out {{ pki_bs_install_target }}/{{ pki_bs_cert_name }}.key 4096"
+      args:
+        creates: "{{ pki_bs_install_target }}/{{ pki_bs_cert_name }}.key"
+
+    - name: Create the bootstrap openssl config
+      template:
+        src: "{{ pki_bs_config }}"
+        dest: "{{ pki_bs_install_target }}/openssl-san-{{ pki_bs_cert_name }}.cnf"
+        mode: 0644
+
+    - name: Create the bootstrap certificate signing request
+      command: "openssl req -new -key {{ pki_bs_install_target }}/{{ pki_bs_cert_name }}.key
+                -out {{ pki_bs_install_target }}/{{ pki_bs_cert_name }}.csr -config
+                {{ pki_bs_install_target }}/openssl-san-{{ pki_bs_cert_name }}.cnf -subj
+                '/C=US/ST=Virginia/L=Alexandria/O=RII/OU=Automation/CN={{ pki_bs_cert_name }}'"
+      args:
+        creates: "{{ pki_bs_install_target }}/{{ pki_bs_cert_name }}.csr"
+
+    - name: Create the boostrap server certificates
+      command: "openssl x509 -sha256 -req -days 14 -in {{ pki_bs_cert_name }}.csr -CA
+               {{ pki_bs_ca_cert }} -CAkey {{ pki_bs_ca_key }} -CAcreateserial
+               -out {{ pki_bs_cert_name }}.pem
+               -extfile openssl-san-{{ pki_bs_cert_name }}.cnf
+               -extensions v3_req"
+      args:
+        creates: "{{ pki_bs_install_target }}/{{ pki_bs_cert_name }}.pem"
+        chdir: "{{ pki_bs_install_target }}"
+
+- name: create keymat deployment targeting, localhost
+  set_fact:
+    bootstrap_keymat_targets:
+      - directory: "{{ rii_vault_cert_path }}"
+  when: inventory_hostname == 'localhost' and pki_bs_rekey_required | bool
+
+- name: create keymat deployment targeting, mgmt
+  set_fact:
+    bootstrap_keymat_targets:
+      - directory: "{{ rii_vault_cert_path }}"
+        owner: ansible
+        group: ansible
+  when: (inventory_hostname in groups['mgmt']) and pki_bs_rekey_required | bool
+
+- name: create keymat deployment targeting, hashi-pki
+  set_fact:
+    bootstrap_keymat_targets:
+      - directory: /root/.bootstrap_pki
+        owner: root
+        group: root
+  when: (inventory_hostname in groups['hashi_vault']) and pki_bs_rekey_required | bool
+
+- name: include the bootstrap_deploy_keymat tasks
+  include_tasks: bootstrap_deploy_keymat.yml
+  loop: "{{ bootstrap_keymat_targets }}"
+  loop_control:
+    loop_var: target
+  when: pki_bs_rekey_required | bool
+
+- name: destroy pki boostrap ca certificates
+  delegate_to: 127.0.0.1
+  become: "{{ management_node }}"
+  run_once: yes
+  block:
+    - name: Purge the CA
+      file:
+        path: "{{ pki_bs_install_target }}"
+        state: absent
+
+    - name: Purge the srl
+      file:
+        path: "{{ pki_bs_srl }}"
+        state: absent
