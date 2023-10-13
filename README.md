@@ -49,3 +49,10 @@ Author Information
 ------------------
 
 Research Innovations Inc. (RII)
+
+
+
+Public Key Infrastructure (PKI) Architecture Diagram
+--------------------------
+
+![Alt text](pki_architecture_diagram.jpg)
